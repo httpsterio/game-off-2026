@@ -1,0 +1,35 @@
+name: web-build
+# Exports the web build and force-pushes it to the web-build branch, which Netlify serves.
+# Run it by hand from the Actions tab, or it runs on every push to main.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: web-build
+  cancel-in-progress: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: chickensoft-games/setup-godot@v2.4.3
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
+      - name: Export web
+        run: uv run tools/check.py export
+      - name: Push to web-build
+        run: |
+          cd build/web
+          git init -q -b web-build
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "build: web export of ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" web-build
